@@ -68,6 +68,8 @@ fn print_slice(items: []u32) void {
     std.debug.print("{d}\n", .{items[items.len - 1]});
 }
 
+fn calc_points_part1() void {}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -84,7 +86,6 @@ pub fn main() !void {
     const in_file = try std.fs.cwd().openFile(fn_name, .{});
     const reader = in_file.reader();
     var total_points: u32 = 0;
-    _ = &total_points;
     const cardList = try parse_input(allocator, reader);
     defer {
         for (cardList) |card| {
@@ -94,7 +95,13 @@ pub fn main() !void {
         }
         allocator.free(cardList);
     }
-    for (cardList) |card| {
+    var card_count_list = std.ArrayList(u32).init(allocator);
+    defer card_count_list.deinit();
+    for (cardList) |_| {
+        try card_count_list.append(1);
+    }
+    const card_count = card_count_list.items;
+    for (cardList, 0..) |card, card_idx| {
         var winning_set = std.AutoHashMap(u32, void).init(allocator);
         defer winning_set.deinit();
         var our_set = std.AutoHashMap(u32, void).init(allocator);
@@ -120,12 +127,28 @@ pub fn main() !void {
         print_slice(card.winning_numbers);
         std.debug.print("Our numbers: ", .{});
         print_slice(card.our_numbers);
+        const this_card_num = card_count[card_idx];
+        std.debug.print("this_card_num: {d}\n", .{this_card_num});
         if (won_count > 0) {
             const points = math.pow(u32, 2, won_count - 1);
             total_points += points;
             std.debug.print("You have {d} matching numbers, {d} points\n", .{ won_count, points });
+            // Adjust the number of scratch cards are have
+            const end_idx = @min(card_count.len - 1, card_idx + won_count);
+            // Range is exclusive of the last number
+            for (card_idx + 1..end_idx + 1) |i| {
+                card_count[i] += this_card_num;
+            }
+        } else {
+            std.debug.print("You have no matching numbers :(\n", .{});
         }
+        //std.debug.print("Card count list: {any}\n", .{card_count});
         std.debug.print("\n", .{});
     }
+    var sum_of_card_count: u32 = 0;
+    for (card_count) |c| {
+        sum_of_card_count += c;
+    }
+    std.debug.print("Total scratch cards: {d}\n", .{sum_of_card_count});
     std.debug.print("Total points: {d}\n", .{total_points});
 }
